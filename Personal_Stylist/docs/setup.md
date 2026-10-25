@@ -102,11 +102,16 @@ The local CLI supplies `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVIC
 
 ### D. Run the API
 
+For local Deep analysis, align the gateway timeout before serving. The Supabase CLI's default gateway cuts requests off at 150 seconds, before the backend's 180-second deadline. From the repository root:
+
 ```sh
+npm run backend:gateway-timeout
 npx supabase functions serve api --env-file supabase/functions/.env
 ```
 
-Leave this Terminal running. After changing `.env`, stop it with Control-C and run the command again.
+Leave this Terminal running. After changing `.env`, stop it with Control-C and run the serve command again.
+
+The gateway helper validates and gracefully reloads only the local gateway configuration, setting the functions read timeout to 195 seconds, and verifies the active setting. It makes no model calls and does not modify database data. Re-run it whenever Supabase recreates its gateway container; `npm run backend:start` runs it automatically. This is a local-only adjustment, not a way to change hosted Supabase limits. The iOS app must include the 200-second Deep request timeout and 210-second resource limit.
 
 ## 4. Get the credentials and connect Xcode
 

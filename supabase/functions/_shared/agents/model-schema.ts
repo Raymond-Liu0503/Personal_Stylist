@@ -36,16 +36,17 @@ export const ModelReportSchema = ModelReportBase.superRefine((value,ctx)=>{
 export const ModelOutputSchema = z.union([ModelReportSchema,RetakeSchema]);
 // Explicit provider schema avoids effects/unions silently weakening strict structured output.
 const boundedText={type:'string',minLength:1,maxLength:700};
-export const outputJsonSchema = {type:'object',additionalProperties:false,properties:{kind:{type:'string',enum:['report','retake']},summary:{type:['string','null'],minLength:1,maxLength:700},criteria:{type:'array',maxItems:5,items:{type:'object',additionalProperties:false,properties:{id:{type:'string',enum:['silhouette','colour','coherence','finishing','intent']},applicable:{type:'boolean'},score:{type:['integer','null'],minimum:0,maximum:5},observation:{...boundedText,maxLength:500},explanation:boundedText},required:['id','applicable','score','observation','explanation']}},strengths:{type:'array',maxItems:5,items:{...boundedText,maxLength:500}},diagnoses:{type:'array',maxItems:6,items:{type:'object',additionalProperties:false,properties:{id:{type:'string',enum:diagnosisIds},principle:{type:'string',enum:suggestionPrinciples},observation:{...boundedText,maxLength:500}},required:['id','principle','observation']}},suggestions:{type:'array',maxItems:6,items:{type:'object',additionalProperties:false,properties:{diagnosisId:{type:'string',enum:diagnosisIds},principle:{type:'string',enum:suggestionPrinciples},family:{type:'string',enum:suggestionFamilies},technique:{type:'string',enum:suggestionTechniques},kind:{type:'string',enum:suggestionKinds},impact:{type:'string',enum:suggestionImpacts},requiresPurchase:{type:'boolean'},targetAttribute:{type:['string','null'],enum:[...swapAttributes,null]},observation:{...boundedText,maxLength:500},action:{...boundedText,maxLength:500},reason:{...boundedText,maxLength:500}},required:['diagnosisId','principle','family','technique','kind','impact','requiresPurchase','targetAttribute','observation','action','reason']}},limitations:{type:'array',maxItems:6,items:{...boundedText,maxLength:500}},intentEvidence:{type:['string','null'],minLength:1,maxLength:1000},issues:{type:'array',maxItems:6,items:{type:'string',enum:['no_outfit','multiple_people','too_dark','blurred','too_cropped','unsupported_content']}},instructions:{type:'array',maxItems:6,items:{...boundedText,maxLength:350}}},required:['kind','summary','criteria','strengths','diagnoses','suggestions','limitations','intentEvidence','issues','instructions']};
+export const outputJsonSchema = {type:'object',additionalProperties:false,properties:{kind:{type:'string',enum:['report','retake']},summary:{type:['string','null'],minLength:1,maxLength:700},criteria:{type:'array',maxItems:5,items:{type:'object',additionalProperties:false,properties:{id:{type:'string',enum:['silhouette','colour','coherence','finishing','intent']},applicable:{type:'boolean'},score:{type:['integer','null'],minimum:0,maximum:5},observation:{...boundedText,maxLength:500},explanation:boundedText},required:['id','applicable','score','observation','explanation']}},strengths:{type:'array',maxItems:5,items:{...boundedText,maxLength:500}},diagnoses:{type:'array',maxItems:6,items:{type:'object',additionalProperties:false,properties:{id:{type:'string',enum:diagnosisIds},principle:{type:'string',enum:suggestionPrinciples},observation:{...boundedText,maxLength:500}},required:['id','principle','observation']}},suggestions:{type:'array',maxItems:6,items:{type:'object',additionalProperties:false,properties:{diagnosisId:{type:'string',enum:diagnosisIds},principle:{type:'string',enum:suggestionPrinciples},family:{type:'string',enum:suggestionFamilies},technique:{type:'string',enum:suggestionTechniques},kind:{type:'string',enum:suggestionKinds},impact:{type:'string',enum:suggestionImpacts},requiresPurchase:{type:'boolean'},targetAttribute:{anyOf:[{type:'string',enum:swapAttributes},{type:'null'}]},observation:{...boundedText,maxLength:500},action:{...boundedText,maxLength:500},reason:{...boundedText,maxLength:500}},required:['diagnosisId','principle','family','technique','kind','impact','requiresPurchase','targetAttribute','observation','action','reason']}},limitations:{type:'array',maxItems:6,items:{...boundedText,maxLength:500}},intentEvidence:{type:['string','null'],minLength:1,maxLength:1000},issues:{type:'array',maxItems:6,items:{type:'string',enum:['no_outfit','multiple_people','too_dark','blurred','too_cropped','unsupported_content']}},instructions:{type:'array',maxItems:6,items:{...boundedText,maxLength:350}}},required:['kind','summary','criteria','strengths','diagnoses','suggestions','limitations','intentEvidence','issues','instructions']};
 // Validate the report envelope independently before discarding unusable optional
 // candidates. Required assessment fields and retake validation remain strict.
 const CandidateReportSchema=ModelReportBase.omit({suggestions:true}).extend({suggestions:z.array(z.unknown()).max(6)}).strict();
 const candidateFields=['diagnosisId','principle','family','technique','kind','impact','requiresPurchase','targetAttribute','observation','action','reason'] as const;
 export type CandidateField=typeof candidateFields[number]|'shape';
-function parseCandidates(raw:unknown,onRejected:(count:number,fields:CandidateField[])=>void){
+function parseCandidates(raw:unknown,onRejected:(count:number,fields:CandidateField[])=>void,onRetainedIndices?:(indices:number[])=>void){
   const report=CandidateReportSchema.parse(raw);
   const fields=new Set<CandidateField>();
-  const suggestions=report.suggestions.flatMap(candidate=>{
+  const retainedIndices:number[]=[];
+  const suggestions=report.suggestions.flatMap((candidate,index)=>{
     const parsed=InternalSuggestionSchema.safeParse(candidate);
     if(!parsed.success)for(const issue of parsed.error.issues){
       const field=candidateFields.find(field=>field===issue.path[0]);
@@ -55,15 +56,18 @@ function parseCandidates(raw:unknown,onRejected:(count:number,fields:CandidateFi
     const diagnosis=report.diagnoses.find(item=>item.id===parsed.data.diagnosisId);
     if(!diagnosis){fields.add('diagnosisId');return [];}
     if(diagnosis.principle!==parsed.data.principle){fields.add('principle');return [];}
+    retainedIndices.push(index);
     return [parsed.data];
   });
   const rejected=report.suggestions.length-suggestions.length;
   if(rejected)onRejected(rejected,[...fields]);
-  return ModelReportSchema.parse({...report,suggestions});
+  const validated=ModelReportSchema.parse({...report,suggestions});
+  onRetainedIndices?.(retainedIndices);
+  return validated;
 }
-export function parseModelOutput(raw:unknown,onRejected?:(count:number,fields:CandidateField[])=>void) {
+export function parseModelOutput(raw:unknown,onRejected?:(count:number,fields:CandidateField[])=>void,onRetainedIndices?:(indices:number[])=>void) {
   const parse=(value:unknown)=>onRejected&&value&&typeof value==='object'&&'kind' in value&&value.kind==='report'
-    ?parseCandidates(value,onRejected):ModelOutputSchema.parse(value);
+    ?parseCandidates(value,onRejected,onRetainedIndices):ModelOutputSchema.parse(value);
   // Providers with strict mode require a fixed envelope. Public/internal discriminants stay narrow.
   if(raw && typeof raw==='object' && 'issues' in raw && 'summary' in raw) {
     const x=raw as Record<string,unknown>;

@@ -31,3 +31,7 @@ Backend: `npm test`, `npm run typecheck`, `npm run lint`, `npm run check:edge`, 
 Native host tests: `cd Personal_Stylist && swift test`. See the [native README](Personal_Stylist/README.md) for simulator and end-to-end smoke checks.
 
 Backend migrations, contracts, AI evaluation tools, and backend tests were copied from the original project. Expo UI code and its client-only tests were excluded; native client tests remain in `Personal_Stylist/Tests/`. Backend release and architecture notes live in `docs/backend/`.
+
+## Styling evaluation lab (deferred)
+
+See [the local evaluation lab](evals/lab/README.md) for mock setup, blind comparisons, critic calibration, and the capped $25 pilot. The evaluation lab and Deep pipeline are preserved but deferred while the product adds Everyday / Expert and Quick / Deep modes. No new model-comparison experiments are part of this milestone.

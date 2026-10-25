@@ -13,6 +13,17 @@ export class MockProvider implements Provider {
   const usage={inputTokens:100,outputTokens:150,costMicrodollars:0};
   if(this.scenario==='tools'&&this.calls===1)return {toolCalls:[{id:'lookup-1',type:'function',function:{name:'lookup_clothing_guidance',arguments:'{"topic":"proportion"}'}}],usage};
   if(this.scenario==='retake')return {output:{kind:'retake',issues:['too_dark'],instructions:['Face a soft light source and keep the outfit in frame.']},usage};
-  return {output:this.scenario==='malformed'?{summary:'broken'}:mockReport(this.scenario==='partial'),usage};
+  if(this.scenario==='malformed')return {output:{summary:'broken'},usage};
+  const schema=input.schema as {properties?:Record<string,unknown>};
+  if(schema.properties?.verdicts){
+   const context=JSON.parse(String(input.messages[1].content));
+   if(this.scenario==='critic_failure')return {output:{broken:true},usage};
+   return {output:{verdicts:context.candidates.map((c:{id:string;revision:number})=>({id:c.id,revision:c.revision,verdict:this.scenario==='revision'&&c.revision===1?'revise':'pass',evidence:'Mock visible evidence.',reason:'Mock styling review.'})),assessmentValid:true,assessmentIssues:[],missedOpportunity:null},usage};
+  }
+  if(schema.properties?.candidateIds){
+   const context=JSON.parse(String(input.messages[1].content));
+   return {output:{assessment:context.assessment,candidateIds:context.candidates.map((c:{id:string})=>c.id)},usage};
+  }
+  return {output:mockReport(this.scenario==='partial'),usage};
  }
 }

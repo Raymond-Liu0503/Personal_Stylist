@@ -16,6 +16,9 @@ import Observation
     var starting = true
     var startupFailed = false
     var bootstrap: Bootstrap?
+    var analysisOptions: AnalysisOptions?
+    var selection = AnalysisSelection()
+    var submittedSelection: AnalysisSelection?
     var busy = false
     var error: String?
     var notice: String?
@@ -48,7 +51,13 @@ import Observation
         api = APIClient(configuration: config, auth: auth, transport: transport)
     }
     var onboarded: Bool { signedIn && bootstrap?.hasConsent == true }
-    var analysisBlock: String? { refreshing ? "Checking access…" : bootstrap?.analysisBlock ?? (bootstrap == nil ? (accessError ?? "Account access could not be checked. Refresh access to try again.") : nil) }
+    var analysisBlock: String? {
+        if refreshing { return "Checking access…" }
+        guard let bootstrap else { return accessError ?? "Account access could not be checked. Refresh access to try again." }
+        if let block = bootstrap.analysisBlock { return block }
+        guard let analysisOptions else { return "Analysis options could not be checked. Refresh access to try again." }
+        return analysisOptions.block(for: selection)
+    }
     var validIntent: Bool { (try? intent.context(custom: customIntent)) != nil && prompt.utf16.count <= 1000 }
     func start() async {
         let started = PerformanceTrace.now
@@ -87,12 +96,13 @@ import Observation
             }
             do {
                 let value = try await api.bootstrap()
+                let options = try await api.analysisOptions()
                 guard refreshGeneration == epoch, signedIn, !Task.isCancelled else { return }
-                bootstrap = value; accessError = nil
+                bootstrap = value; analysisOptions = options; accessError = nil
             } catch is CancellationError { }
             catch {
                 guard refreshGeneration == epoch, signedIn else { return }
-                bootstrap = nil; accessError = error.localizedDescription
+                bootstrap = nil; analysisOptions = nil; accessError = error.localizedDescription
             }
         }
         refreshTask = task
@@ -143,15 +153,20 @@ import Observation
     }
     func submit() {
         guard analysisTask == nil, !submitting, !preparing, let photo, analysisBlock == nil, validIntent else { return }
+        // Expert tier is temporarily disabled; keep local/API requests on Everyday.
+        guard selection.stylistTier == .everyday else { return }
+        guard analysisOptions?.profiles.contains(where: { $0.stylistTier == .everyday && $0.analysisDepth == selection.analysisDepth && $0.enabled }) == true else { return }
         let epoch = UUID(); generation = epoch
         let requestID = UUID().uuidString.lowercased()
         let capturedPrompt = prompt, capturedIntent = intent, capturedCustom = customIntent
+        let capturedSelection = AnalysisSelection(stylistTier: .everyday, analysisDepth: selection.analysisDepth), legacy = analysisOptions?.legacy == true
+        submittedSelection = capturedSelection
         submitting = true; error = nil; flow = .processing
         analysisTask = Task {
             do {
                 let bytes = try await photos.read(photo)
                 try Task.checkCancellation()
-                let metadata = try AnalysisMetadata(prompt: capturedPrompt, context: capturedIntent.context(custom: capturedCustom))
+                let metadata = try AnalysisMetadata(prompt: capturedPrompt, context: capturedIntent.context(custom: capturedCustom), stylistTier: legacy ? nil : capturedSelection.stylistTier, analysisDepth: legacy ? nil : capturedSelection.analysisDepth)
                 let response = try await api.analyze(image: bytes, metadata: metadata, requestID: requestID)
                 guard generation == epoch, !Task.isCancelled else { return }
                 result = response; resultReadyAt = PerformanceTrace.now; self.photo = nil; flow = .result
@@ -171,7 +186,7 @@ import Observation
         generation = UUID()
         let task = analysisTask; analysisTask = nil; task?.cancel()
         submitting = false; preparing = false
-        photo = nil; result = nil; resultReadyAt = nil; savedID = nil; reportFeedbackSent = false; suggestionFeedback = [:]
+        photo = nil; result = nil; resultReadyAt = nil; submittedSelection = nil; savedID = nil; reportFeedbackSent = false; suggestionFeedback = [:]
         if !preserveBrief { prompt = ""; intent = .general; customIntent = "" }
         try await photos.sweep()
         if task != nil, signedIn {
@@ -244,7 +259,7 @@ import Observation
         }
     }
     private func localSignOut() async throws {
-        invalidateRefresh(); signedIn = false; bootstrap = nil; clearHistory(); timer = 0; flow = .home; sheet = nil
+        invalidateRefresh(); signedIn = false; bootstrap = nil; analysisOptions = nil; selection = AnalysisSelection(); submittedSelection = nil; clearHistory(); timer = 0; flow = .home; sheet = nil
         // Always attempt both credential removal and photo cleanup, even if either fails.
         var failure: Error?
         do { try await clearAnalysis() } catch { failure = error }

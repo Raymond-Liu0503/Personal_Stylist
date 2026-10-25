@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {intentPresets,contextForIntent,IntentSelectionSchema,mergeAssessmentContext,MetadataSchema,ReportSchema,promptFor,DEFAULT_PROMPT,PreferencesSchema,FeedbackSchema} from '../packages/contracts/src/index.ts';
+import {intentPresets,contextForIntent,IntentSelectionSchema,mergeAssessmentContext,analysisSelection,MetadataSchema,ReportSchema,promptFor,DEFAULT_PROMPT,PreferencesSchema,FeedbackSchema} from '../packages/contracts/src/index.ts';
 import {calculateOutfitScore} from '../supabase/functions/_shared/agents/scoring.ts';
 import {mockReport,MockProvider} from '../supabase/functions/_shared/providers/mock.ts';
 import {runOutfit} from '../supabase/functions/_shared/agents/runtime.ts';
@@ -14,6 +14,11 @@ import {OpenRouterProvider} from '../supabase/functions/_shared/providers/openro
 const uid='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',runId='bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
 const input=()=>({runId,metadata:{schemaVersion:1 as const},image:new Uint8Array(),signal:AbortSignal.timeout(1000)});
 const criteria=()=>ModelReportSchema.parse(mockReport()).criteria;
+test('stylist selection defaults and strict allowlist',()=>{
+ assert.deepEqual(analysisSelection(MetadataSchema.parse({schemaVersion:1})),{stylistTier:'everyday',analysisDepth:'quick'});
+ for(const stylistTier of ['everyday','expert'])for(const analysisDepth of ['quick','deep'])assert.deepEqual(analysisSelection(MetadataSchema.parse({schemaVersion:1,stylistTier,analysisDepth})),{stylistTier,analysisDepth});
+ for(const extra of [{stylistTier:'admin'},{analysisDepth:'unlimited'},{model:'arbitrary'},{provider:'arbitrary'},{max_tokens:999999}])assert.equal(MetadataSchema.safeParse({schemaVersion:1,...extra}).success,false);
+});
 test('photo-only and blank prompts have the same default, never an invented occasion',()=>{for(const prompt of [undefined,'','   '])assert.equal(promptFor(MetadataSchema.parse({schemaVersion:1,prompt})),DEFAULT_PROMPT);assert.equal(MetadataSchema.parse({schemaVersion:1}).context,undefined);});
 test('strict metadata, bounded prompts, and preference allowlist',()=>{assert.throws(()=>MetadataSchema.parse({schemaVersion:1,userId:uid}));assert.throws(()=>MetadataSchema.parse({schemaVersion:1,prompt:'x'.repeat(1001)}));assert.throws(()=>PreferencesSchema.parse({admin:true}));});
 test('photo-only weights score 8, complete, works well',()=>{assert.deepEqual(calculateOutfitScore(criteria(),{schemaVersion:1},null),{overallScore:8,verdict:'works_well',status:'complete',coverage:1});});
@@ -168,7 +173,7 @@ test('OpenRouter sends the configured comparison model and generation settings',
  let requestBody:Record<string,unknown>|undefined;const fetcher:typeof fetch=async(_input,init)=>{requestBody=JSON.parse(String(init?.body));return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(mockReport())}}],usage:{prompt_tokens:1,completion_tokens:1,cost:0}}));};
  const provider=new OpenRouterProvider('key',['google-vertex/global'],fetcher,'google/gemini-3.1-pro-preview');
  await provider.generate({messages:[{role:'user',content:'test'}],tools:[],schema:{type:'object'},signal:AbortSignal.timeout(1000),maxOutputTokens:3600,temperature:1,reasoningEffort:'low'});
- assert.equal(requestBody?.model,'google/gemini-3.1-pro-preview');assert.equal(requestBody?.temperature,1);assert.deepEqual(requestBody?.reasoning,{effort:'low'});assert.equal(requestBody?.max_tokens,3600);
+ assert.equal(requestBody?.model,'google/gemini-3.1-pro-preview');assert.equal(requestBody?.temperature,1);assert.deepEqual(requestBody?.reasoning,{effort:'low',exclude:true});assert.equal(requestBody?.max_tokens,3600);
 });
 test('explicit no-purchase constraints remove purchase-required actions server-side',async()=>{
  const raw=mockReport(),purchase=candidate({diagnosisId:'d2',principle:'balance',family:'footwear',technique:'footwear_swap',kind:'swap',impact:'high',requiresPurchase:true,targetAttribute:'formality',action:'Buy a less formal shoe.',observation:'The shoes are more formal than the visible layers.',reason:'A relaxed shape would connect to the outfit.'});

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "mockOnly": false,
+  "cases": [
+    {"id":"development-01-front","group":"outfit-01","split":"development","image":"outfit-01/front.jpg","rights":"REPLACE with source URL, creator, license/consent record","metadata":{"schemaVersion":1,"context":{"constraints":["No purchases"]}}},
+    {"id":"heldout-01-front","group":"outfit-13","split":"heldout","image":"outfit-13/front.jpg","rights":"REPLACE with source URL, creator, license/consent record","metadata":{"schemaVersion":1}}
+  ]
+}

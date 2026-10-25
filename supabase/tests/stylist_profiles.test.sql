@@ -1,0 +1,17 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(6);
+insert into auth.users(id,email) values ('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','profile@example.invalid');
+insert into public.beta_access(user_id,enabled,daily_quota_exempt) values ('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',true,true);
+insert into public.consents(user_id,policy_version,accepted,adult_confirmed) values ('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','2026-09-01',true,true);
+insert into public.budget_monthly(month) values(date_trunc('month',now() at time zone 'utc')::date) on conflict do nothing;
+update public.budget_monthly set ceiling_microdollars=reserved_microdollars+settled_microdollars+5000000 where month=date_trunc('month',now() at time zone 'utc')::date;
+select is(public.claim_analysis('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','11111111-1111-4111-a111-111111111111','{"profile":"everyday-quick","profileVersion":"stylist-v1"}',100000),'OK','Everyday Quick reservation');
+select throws_ok($$select public.claim_analysis('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','22222222-2222-4222-a222-222222222222','{"profile":"expert-deep","profileVersion":"stylist-v1"}',100000)$$,'P0001',null,'client cannot under-reserve Expert Deep');
+select is(public.dispatch_analysis('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','11111111-1111-4111-a111-111111111111'),true,'dispatch consumes one analysis regardless of profile');
+select public.settle_analysis('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','11111111-1111-4111-a111-111111111111',25);
+select is((select reserved_microdollars from public.budget_monthly where month=date_trunc('month',now() at time zone 'utc')::date),0::bigint,'unused reservation released on settlement');
+select is((select dispatched_count from public.usage_daily where user_id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'),1,'one user analysis uses one daily allowance');
+select is(public.claim_analysis('aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa','33333333-3333-4333-a333-333333333333','{"profile":"expert-quick","profileVersion":"stylist-v1"}',1200000),'OK','Expert Quick accepts its profile reservation');
+select * from finish();
+rollback;

@@ -1,0 +1,12 @@
+{
+  "id": "flash-generator-01",
+  "split": "development",
+  "pipeline": "generator",
+  "generator": {"model":"google/gemini-3.1-flash-lite","route":"google-vertex/global","maxOutputTokens":3600,"temperature":1,"reasoningEffort":"low"},
+  "evidence": {"model":"anthropic/claude-opus-4.6","route":"anthropic","maxOutputTokens":3600,"temperature":1,"reasoningEffort":"low"},
+  "styling": {"model":"anthropic/claude-opus-4.6","route":"anthropic","maxOutputTokens":3600,"temperature":1,"reasoningEffort":"low"},
+  "generatorPrompt":"outfit-v1",
+  "criticPrompt":"review-v1",
+  "seed":"pilot-01",
+  "sourceRound":0
+}

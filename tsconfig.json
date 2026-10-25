@@ -21,7 +21,8 @@
     "supabase/functions/_shared/**/*.ts",
     "tests/**/*.ts",
     "supabase/functions/api/handler.ts",
-    "evals/runner/*.ts"
+    "evals/runner/*.ts",
+    "evals/lab/**/*.ts"
   ],
   "exclude": [
     "**/*.deno.test.ts"

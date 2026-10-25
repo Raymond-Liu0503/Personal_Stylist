@@ -7,12 +7,12 @@ import { ApiError } from '../security/errors.ts';
 import { selectSuggestions } from './suggestions.ts';
 import type { ReasoningEffort } from '../providers/types.ts';
 export type ValidationDiagnostic={round:number;stage:'provider'|'schema'|'scoring'|'report'|'candidates'|'selection';rejectedCount?:number;fields?:CandidateField[];candidateCount?:number;selectedCount?:number};
-const forbidsPurchases=(constraints:readonly string[])=>(constraints).some(constraint=>
+export const forbidsPurchases=(constraints:readonly string[])=>(constraints).some(constraint=>
   /\b(no|avoid|without)\b.{0,30}\b(buy|buying|purchase|purchases|shopping|new (?:clothes|clothing|items|pieces))\b/i.test(constraint)
   ||/\b(do not|don['’]?t|cannot|can['’]?t)\b.{0,30}\b(buy|purchase|shop|spend)\b/i.test(constraint)
   ||/\b(use|wear|work with)\b.{0,30}\b(what|things|pieces|clothes|clothing|items)\b.{0,20}\b(own|have)\b/i.test(constraint)
 );
-export async function runOutfit(provider:Provider,input:{runId:string;metadata:OutfitAnalysisMetadata;image:Uint8Array;signal:AbortSignal;recentTechniques?:readonly string[];generationConfig?:{maxOutputTokens:number;temperature:number;reasoningEffort:ReasoningEffort}},onUsage:(usage:Usage)=>void=()=>{},onDiagnostic:(diagnostic:ValidationDiagnostic)=>void=()=>{}) {
+export async function runOutfit(provider:Provider,input:{runId:string;metadata:OutfitAnalysisMetadata;image:Uint8Array;signal:AbortSignal;recentTechniques?:readonly string[];generationConfig?:{maxOutputTokens:number;temperature?:number;reasoningEffort:ReasoningEffort}},onUsage:(usage:Usage)=>void=()=>{},onDiagnostic:(diagnostic:ValidationDiagnostic)=>void=()=>{}) {
   const messages:Message[]=[{role:'system',content:outfit.skillBundle.instructions},{role:'user',content:JSON.stringify({prompt:promptFor(input.metadata),context:input.metadata.context??{},recentTechniques:[...new Set(input.recentTechniques??[])]})}];
   for(let round=0;round<outfit.maxModelRounds;round++) {
     input.signal.throwIfAborted();

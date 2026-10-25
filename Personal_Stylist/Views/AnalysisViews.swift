@@ -48,7 +48,12 @@ private struct PreparedPhotoPreview: View {
         .accessibilityLabel("Outfit photo preview")
         .task(id: photo.url) {
             image = nil
-            if let data = try? await photos.read(photo), !Task.isCancelled { image = UIImage(data: data) }
+            guard let data = try? await photos.read(photo), !Task.isCancelled else { return }
+            // Decode off the main thread; only set the @State var back on the main actor.
+            let decoded = await withCheckedContinuation { (cont: CheckedContinuation<UIImage?, Never>) in
+                DispatchQueue.global(qos: .userInteractive).async { cont.resume(returning: UIImage(data: data)) }
+            }
+            if !Task.isCancelled { image = decoded }
         }
     }
 }
@@ -75,6 +80,16 @@ struct ReviewView: View {
                     PhotoImportButton(model: model, title: "Replace")
                 }.font(.callout.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
                 if model.preparing { ProgressView("Preparing photo…") }
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("Analysis", selection: $model.selection.analysisDepth) {
+                            Text("Quick").tag(AnalysisDepth.quick)
+                            Text("Deep").tag(AnalysisDepth.deep)
+                        }.pickerStyle(.segmented)
+                        Text(model.selection.analysisDepth == .quick ? "A direct assessment" : "Extra checks for detail and useful suggestions")
+                            .font(.footnote).foregroundStyle(StylistTheme.muted)
+                    }
+                } label: { Text("Choose analysis depth") }.stylistCard().disabled(model.submitting)
                 DisclosureGroup("Styling options · \(model.intent.label)") {
                     VStack(alignment: .leading, spacing: 16) {
                         Picker("Styling intent", selection: $model.intent) { ForEach(IntentPreset.allCases) { Text($0.label).tag($0) } }
@@ -124,8 +139,12 @@ struct ProcessingView: View {
         VStack(spacing: 24) {
             Spacer()
             if model.submitting {
+                Text((model.submittedSelection ?? model.selection).analysisDepth.label).font(.headline)
                 ProgressView().controlSize(.large).tint(StylistTheme.accent)
                 Text("Analyzing…").font(.title2.weight(.medium)).accessibilityAddTraits(.isHeader)
+                if model.selection.analysisDepth == .deep {
+                    Text("Reviewing your outfit more carefully; this may take longer.").font(.callout)
+                }
             } else {
                 Image(systemName: "exclamationmark.circle").font(.largeTitle).foregroundStyle(StylistTheme.accent)
                 Text("Couldn't finish").font(.title2.weight(.medium))
@@ -156,6 +175,7 @@ struct ResultsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 if let report = model.result?.report {
+                    if let selection = model.submittedSelection { Text(selection.analysisDepth.label).font(.subheadline.weight(.semibold)).foregroundStyle(StylistTheme.muted) }
                     ReportView(report: report, feedback: model.suggestionFeedback, busy: model.busy, onFeedback: { index, helpful in Task { await model.sendFeedback(helpful: helpful, suggestion: index) } })
                     DisclosureGroup("Report feedback") {
                         VStack(spacing: 12) {

@@ -75,6 +75,15 @@ final class ContractsTests: XCTestCase {
         XCTAssertThrowsError(try Multipart.encode(image: Data(), metadata: AnalysisMetadata(prompt: "", context: [:]), boundary: "x"))
         XCTAssertThrowsError(try Multipart.encode(image: jpeg, metadata: AnalysisMetadata(prompt: String(repeating: "x", count: 1001), context: [:]), boundary: "x"))
     }
+    func testAnalysisOptionsRequireExactlyFourUniqueProfilesAndExposeLegacyFallback() throws {
+        let raw = #"{"profiles":[{"stylistTier":"everyday","analysisDepth":"quick","enabled":true,"unavailableReason":null},{"stylistTier":"everyday","analysisDepth":"deep","enabled":true,"unavailableReason":null},{"stylistTier":"expert","analysisDepth":"quick","enabled":false,"unavailableReason":"Unavailable."},{"stylistTier":"expert","analysisDepth":"deep","enabled":false,"unavailableReason":"Unavailable."}]}"#
+        let options = try AnalysisOptions.decode(Data(raw.utf8))
+        XCTAssertNil(options.block(for: AnalysisSelection()))
+        XCTAssertNotNil(options.block(for: AnalysisSelection(stylistTier: .expert, analysisDepth: .quick)))
+        XCTAssertEqual(AnalysisOptions.legacyOptions.profiles.filter(\.enabled).count, 1)
+        XCTAssertThrowsError(try AnalysisOptions.decode(Data(raw.replacingOccurrences(of: "expert", with: "invalid").utf8)))
+        XCTAssertThrowsError(try AnalysisOptions.decode(Data(#"{"profiles":[]}"#.utf8)))
+    }
     func testPreferencesAndBootstrapBounds() throws {
         XCTAssertThrowsError(try Preferences(desiredStyle: nil, constraints: Array(repeating: "x", count: 11)).validated())
         let data = Data(#"{"profile":{},"policyVersion":"2026-09-01","consentAccepted":true,"features":{"outfit":true},"remainingQuota":4,"betaAccess":true}"#.utf8)

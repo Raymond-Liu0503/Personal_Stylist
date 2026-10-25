@@ -65,6 +65,26 @@ The Xcode project has explicit source membership. After adding or moving Swift f
 
 TestFlight distribution, hosted deployment, and paid inference activation are outside this local migration milestone.
 
+## Evaluation lab (deferred)
+
+Model evaluations and experiments are sidelined while the Everyday / Expert product modes are implemented. The evaluation lab, scripts, datasets and previous results remain preserved for a future, separately authorized quality-research phase. Do not run its live launcher as part of normal app verification.
+
+## Run real model experiments in the evaluation lab (deferred reference)
+
+From this native-app directory, run:
+
+```sh
+python3 Scripts/run-evaluation-lab.py
+```
+
+The launcher loads the existing private OpenRouter configuration from `../supabase/functions/.env`, verifies the key and Flash route without inference, and starts the browser lab at `http://127.0.0.1:8787`. It finds Node in PATH or the local nvm installation. Leave the terminal open; Ctrl-C stops the server.
+
+Live experiment records are saved under `~/StylistEvaluationData/live`, using the downloaded photos under `~/StylistEvaluationData/images`. The earlier mock manifest and results are preserved. The live manifest is a frozen snapshot; the launcher will not reset existing spending or overwrite changed datasets.
+
+In the browser, check that the status says **LIVE**. Start with a new ID such as `flash-live-01`, Development, the existing baseline pipeline, and the default Flash Lite model with `google-vertex/global`. Clicking **Run** starts real model calls; opening the site does not. The ledger retains the $10 development / $15 held-out limits. To compare generators, use a second experiment ID, the same split, and Gemini Pro, then select those two experiment IDs in Blind comparison. Zero human-labelled errors before reviewing results is not evidence of quality.
+
+The downloaded photos are an exploratory collection that includes crops and crowds. Their source licenses and attribution are retained; those cases may legitimately produce retake or partial reports. Critic/Deep configurations need separately verified routes and enough budget; the launcher only preflights the Flash baseline.
+
 ## Camera-first flow and performance checks
 
 After sign-in and consent, the camera is home. Saved and Account open from the corner buttons. Take or import a photo, optionally expand Styling options, and tap Analyze. Results retain the complete report under expandable sections; saving still stores text only. Simulator users can import a photo when capture hardware is unavailable.

@@ -9,15 +9,21 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts tests/*.test.mjs",
     "skills:build": "node scripts/compile-skills.mjs",
     "lint": "eslint .",
     "test:db": "supabase test db",
     "check:edge": "deno check --config supabase/functions/deno.json supabase/functions/api/index.ts",
     "test:edge": "deno test --allow-env --config supabase/functions/deno.json supabase/functions/_shared",
     "local:user": "node scripts/local-user.mjs",
-    "backend:start": "supabase start",
-    "backend:serve": "supabase functions serve api --env-file supabase/functions/.env"
+    "backend:start": "supabase start && node scripts/local-gateway-timeout.mjs",
+    "backend:gateway-timeout": "node scripts/local-gateway-timeout.mjs",
+    "backend:serve": "supabase functions serve api --env-file supabase/functions/.env",
+    "lab": "node --import tsx evals/lab/server.ts",
+    "test:lab": "node --import tsx --test tests/deep.test.ts tests/lab.test.ts",
+    "lab:demo": "node --import tsx evals/lab/create-demo.ts",
+    "lab:run": "node --import tsx evals/lab/entrypoint.ts",
+    "check:lab": "tsc --noEmit -p evals/lab/tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "22.19.15",

@@ -222,8 +222,47 @@ enum IntentPreset: String, CaseIterable, Identifiable, Sendable {
         }
     }
 }
+enum StylistTier: String, Codable, CaseIterable, Sendable { case everyday, expert
+    var label: String { self == .everyday ? "Everyday" : "Expert" }
+}
+enum AnalysisDepth: String, Codable, CaseIterable, Sendable { case quick, deep
+    var label: String { self == .quick ? "Quick" : "Deep" }
+}
+struct AnalysisSelection: Equatable, Sendable {
+    var stylistTier: StylistTier = .everyday
+    var analysisDepth: AnalysisDepth = .quick
+    var label: String { "\(stylistTier.label) · \(analysisDepth.label)" }
+}
+struct AnalysisOptions: Decodable, Sendable {
+    struct Profile: Decodable, Sendable {
+        let stylistTier: StylistTier
+        let analysisDepth: AnalysisDepth
+        let enabled: Bool
+        let unavailableReason: String?
+    }
+    let profiles: [Profile]
+    var legacy = false
+    enum CodingKeys: String, CodingKey { case profiles }
+    static let legacyOptions = AnalysisOptions(profiles: StylistTier.allCases.flatMap { tier in AnalysisDepth.allCases.map { depth in
+        Profile(stylistTier: tier, analysisDepth: depth, enabled: tier == .everyday && depth == .quick, unavailableReason: "This server supports Everyday Quick only.")
+    } }, legacy: true)
+    func block(for selection: AnalysisSelection) -> String? {
+        guard let profile = profiles.first(where: { $0.stylistTier == selection.stylistTier && $0.analysisDepth == selection.analysisDepth }), profile.enabled else {
+            return profiles.first(where: { $0.stylistTier == selection.stylistTier && $0.analysisDepth == selection.analysisDepth })?.unavailableReason ?? "This analysis option is unavailable."
+        }
+        return nil
+    }
+    static func decode(_ data: Data) throws -> AnalysisOptions {
+        let schema = WireSchema.object(["profiles": .array(.object(["stylistTier": .choice(["everyday", "expert"]), "analysisDepth": .choice(["quick", "deep"]), "enabled": .bool, "unavailableReason": .nullable(.text(200))]), 4, 4)])
+        let value = try Contracts.decode(Self.self, data: data, schema: schema)
+        guard Set(value.profiles.map { "\($0.stylistTier.rawValue):\($0.analysisDepth.rawValue)" }).count == 4 else { throw StylistError.message("Invalid analysis options.") }
+        return value
+    }
+}
 struct AnalysisMetadata: Encodable, Sendable {
     let schemaVersion = 1
     let prompt: String
     let context: [String: String]
+    var stylistTier: StylistTier? = nil
+    var analysisDepth: AnalysisDepth? = nil
 }

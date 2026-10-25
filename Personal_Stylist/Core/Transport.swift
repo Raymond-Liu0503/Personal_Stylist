@@ -11,7 +11,9 @@ final class URLSessionTransport: NSObject, HTTPTransport, URLSessionTaskDelegate
         config.httpCookieStorage = nil
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.timeoutIntervalForRequest = 60
-        config.timeoutIntervalForResource = 60
+        // Deep analysis has a 180-second server deadline; allow time for upload
+        // and delivery of its response rather than timing out first.
+        config.timeoutIntervalForResource = 210
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }()
     override init() { super.init(); _ = session }
@@ -53,7 +55,7 @@ struct AuthSession: Codable, Sendable {
     init(configuration: AppConfiguration, auth: any SessionProviding, transport: any HTTPTransport = URLSessionTransport()) {
         self.configuration = configuration; self.auth = auth; self.transport = transport
     }
-    func request(_ path: String, method: String = "GET", body: Data? = nil, contentType: String = "application/json", requestID: String? = nil, query: [URLQueryItem] = []) async throws -> Data {
+    func request(_ path: String, method: String = "GET", body: Data? = nil, contentType: String = "application/json", requestID: String? = nil, query: [URLQueryItem] = [], timeout: TimeInterval = 60) async throws -> Data {
         let started = PerformanceTrace.now
         defer { if path == "/analyze/outfit" { PerformanceTrace.finish("analysis_request", since: started, id: requestID ?? "none") } }
         let generation = auth.generation
@@ -65,7 +67,7 @@ struct AuthSession: Codable, Sendable {
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
         request.httpBody = body
-        request.timeoutInterval = 60
+        request.timeoutInterval = timeout
         request.setValue("Bearer \(session.access_token)", forHTTPHeaderField: "Authorization")
         request.setValue(configuration.publicKey, forHTTPHeaderField: "apikey")
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
@@ -74,6 +76,7 @@ struct AuthSession: Codable, Sendable {
         try Task.checkCancellation()
         guard generation == auth.generation, session.user.id == auth.userID else { throw CancellationError() }
         guard (200..<300).contains(response.statusCode) else {
+            if path == "/analysis-options", response.statusCode == 404 { throw StylistError.api("OPTIONS_NOT_FOUND", "Legacy analysis server.") }
             struct Failure: Decodable { struct Detail: Decodable { let code: String; let message: String }; let error: Detail }
             if let error = try? JSONDecoder().decode(Failure.self, from: data), error.error.message.utf16.count <= 500 {
                 throw StylistError.api(error.error.code, error.error.message)
@@ -81,6 +84,10 @@ struct AuthSession: Codable, Sendable {
             throw StylistError.message("The request could not be completed (\(response.statusCode)).")
         }
         return data
+    }
+    func analysisOptions() async throws -> AnalysisOptions {
+        do { return try AnalysisOptions.decode(await request("/analysis-options")) }
+        catch StylistError.api("OPTIONS_NOT_FOUND", _) { return .legacyOptions }
     }
     func bootstrap() async throws -> Bootstrap { try Contracts.decode(Bootstrap.self, data: await request("/bootstrap"), schema: Contracts.bootstrap) }
     func confirm(_ path: String, method: String = "POST", body: Data?, key: String) async throws {
@@ -99,7 +106,7 @@ struct AuthSession: Codable, Sendable {
     func analyze(image: Data, metadata: AnalysisMetadata, requestID: String) async throws -> AnalysisResult {
         let boundary = "Stylist-\(UUID().uuidString)"
         let body = try Multipart.encode(image: image, metadata: metadata, boundary: boundary)
-        return try AnalysisResult.decode(await request("/analyze/outfit", method: "POST", body: body, contentType: "multipart/form-data; boundary=\(boundary)", requestID: requestID))
+        return try AnalysisResult.decode(await request("/analyze/outfit", method: "POST", body: body, contentType: "multipart/form-data; boundary=\(boundary)", requestID: requestID, timeout: metadata.analysisDepth == .deep ? 200 : 60))
     }
     func save(_ result: AnalysisResult) async throws -> SavedReport {
         let data = try await request("/reports", method: "POST", body: result.saveBody())
