@@ -22,7 +22,7 @@ struct HistoryView: View {
             if model.historyCursor != nil { StylistButton(title: "Load older reports", secondary: true) { Task { await model.loadHistory(older: true) } }.disabled(model.historyLoading) }
             StylistButton(title: "Refresh history", secondary: true) { Task { await model.loadHistory() } }.disabled(model.historyLoading)
         }
-        .task { if model.tab == .saved { await model.loadHistory() } }
+        .task { await model.loadHistory() }
         .refreshable { await model.loadHistory() }
     }
 }

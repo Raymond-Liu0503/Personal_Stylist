@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import ImageIO
 import UniformTypeIdentifiers
 
@@ -12,6 +13,11 @@ actor PhotoService {
     func remove(_ photo: PreparedPhoto) throws {
         guard photo.url.deletingLastPathComponent().standardizedFileURL == directory.standardizedFileURL else { return }
         if FileManager.default.fileExists(atPath: photo.url.path) { try FileManager.default.removeItem(at: photo.url) }
+    }
+    func read(_ photo: PreparedPhoto) throws -> Data {
+        try Task.checkCancellation()
+        guard photo.url.deletingLastPathComponent().standardizedFileURL == directory.standardizedFileURL else { throw StylistError.message("The photo is unavailable.") }
+        return try Data(contentsOf: photo.url)
     }
     func prepare(_ data: Data) throws -> PreparedPhoto {
         try Task.checkCancellation()
@@ -42,5 +48,15 @@ actor PhotoService {
             }
         }
         throw StylistError.message("This photo is still too large. Try another photo.")
+    }
+}
+
+// Local timing only: never record photos, credentials, prompts, or report content.
+enum PerformanceTrace {
+    private static let logger = Logger(subsystem: "com.personalstylist", category: "Performance")
+    static var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
+    static func finish(_ stage: String, since start: TimeInterval, id: String = "none") {
+        let milliseconds = Int((now - start) * 1000)
+        logger.debug("stage=\(stage, privacy: .public) elapsedMs=\(milliseconds) requestId=\(id, privacy: .public)")
     }
 }

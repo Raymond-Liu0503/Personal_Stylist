@@ -1,0 +1,26 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(9);
+insert into auth.users(id,email) values ('cccccccc-cccc-4ccc-accc-cccccccccccc','unlimited@example.invalid'),('dddddddd-dddd-4ddd-addd-dddddddddddd','limited@example.invalid');
+insert into public.beta_access(user_id,enabled,daily_quota_exempt) values ('cccccccc-cccc-4ccc-accc-cccccccccccc',true,true),('dddddddd-dddd-4ddd-addd-dddddddddddd',true,false);
+insert into public.consents(user_id,policy_version,accepted,adult_confirmed) select user_id,'2026-09-01',true,true from public.beta_access where user_id in ('cccccccc-cccc-4ccc-accc-cccccccccccc','dddddddd-dddd-4ddd-addd-dddddddddddd');
+insert into public.usage_daily(user_id,day,dispatched_count) select user_id,(now() at time zone 'utc')::date,3 from public.beta_access where user_id in ('cccccccc-cccc-4ccc-accc-cccccccccccc','dddddddd-dddd-4ddd-addd-dddddddddddd');
+select is(public.claim_analysis('dddddddd-dddd-4ddd-addd-dddddddddddd','eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee','{}'),'QUOTA_EXHAUSTED','normal account remains limited');
+-- Give this rolled-back test room even if the real local budget is exhausted.
+insert into public.budget_monthly(month) values(date_trunc('month',now() at time zone 'utc')::date) on conflict do nothing;
+update public.budget_monthly set ceiling_microdollars=reserved_microdollars+settled_microdollars+100000 where month=date_trunc('month',now() at time zone 'utc')::date;
+select is(public.claim_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee','{}'),'OK','exempt account can reserve a fourth analysis');
+select is(public.dispatch_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee'),true,'fourth dispatch succeeds');
+select is(public.dispatch_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee'),false,'duplicate dispatch remains blocked');
+select is((select dispatched_count from public.usage_daily where user_id='cccccccc-cccc-4ccc-accc-cccccccccccc'),4,'usage remains accurately counted');
+select public.settle_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee',200);
+select is(public.claim_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee','{}'),'DUPLICATE_FINISHED','finished request remains idempotent');
+update public.budget_monthly set ceiling_microdollars=reserved_microdollars+settled_microdollars where month=date_trunc('month',now() at time zone 'utc')::date;
+select is(public.claim_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','ffffffff-ffff-4fff-afff-ffffffffffff','{}'),'BUDGET_EXHAUSTED','monthly budget still enforced');
+set local role authenticated;
+select throws_ok($$update public.beta_access set daily_quota_exempt=true$$,'42501',null,'clients cannot grant exemptions');
+reset role;
+update public.beta_access set daily_quota_exempt=false where user_id='cccccccc-cccc-4ccc-accc-cccccccccccc';
+select is(public.claim_analysis('cccccccc-cccc-4ccc-accc-cccccccccccc','ffffffff-ffff-4fff-afff-ffffffffffff','{}'),'QUOTA_EXHAUSTED','revoking exemption restores daily limit');
+select * from finish();
+rollback;

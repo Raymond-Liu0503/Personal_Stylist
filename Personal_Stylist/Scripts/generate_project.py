@@ -28,6 +28,9 @@ for path in ['Config/Info.plist', 'Config/PersonalStylist.entitlements']: file(p
 for path in ['README.md', 'docs/setup.md']: file(path, 'net.daringfireball.markdown')
 for path in ['LocalConfig.example.plist']: file(path, 'text.plist.xml')
 for path in ['docs/backend.local.env.example', 'docs/backend.live.env.example']: file(path, 'text')
+# Editor reference only: private backend settings must never enter a build phase.
+backend_key = file('../supabase/functions/.env', 'text')
+objects[backend_key] = objects[backend_key].replace('path = ', 'name = "Backend API Keys (.env)"; path = ', 1)
 products = []
 def phase(name, kind, paths):
     builds = [obj('build:' + name + ':' + p, f'{{isa = PBXBuildFile; fileRef = {ident("file:" + p)}; }}') for p in paths]
@@ -36,6 +39,9 @@ def configs(name, values):
     configs = []
     for mode in ['Debug', 'Release']:
         v = dict(values)
+        if name == 'PersonalStylist' and mode == 'Debug':
+            # Personal Teams can run local test login without the Apple sign-in capability.
+            v['CODE_SIGN_ENTITLEMENTS'] = ''
         v.update({'SWIFT_OPTIMIZATION_LEVEL': '-Onone' if mode == 'Debug' else '-O', 'SWIFT_ACTIVE_COMPILATION_CONDITIONS': 'DEBUG' if mode == 'Debug' else ''})
         configs.append(obj(name + ':' + mode, f'{{isa = XCBuildConfiguration; buildSettings = {settings(v)}; name = {mode}; }}'))
     return obj(name + ':configs', f'{{isa = XCConfigurationList; buildConfigurations = {arr(configs)}; defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; }}')

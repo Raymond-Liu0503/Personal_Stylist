@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		7BDE307FFA6C7D4F73EB1B46 = {isa = PBXFileReference; lastKnownFileType = text; name = "Backend API Keys (.env)"; path = "supabase/functions/.env"; sourceTree = SOURCE_ROOT; };
 		000000000000000000000120 /* Personal_Stylist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Personal_Stylist.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FCB8EF73085D34E00FCB295 /* Personal Stylist.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Personal Stylist.xcodeproj"; sourceTree = "<group>"; };
 		9FCB8F343085D5ED00FCB295 /* Personal Stylist.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Personal Stylist.xcodeproj"; sourceTree = "<group>"; };
@@ -32,7 +33,8 @@
 		000000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000010 /* Personal_Stylist */,
+				0000007BDE307FFA6C7D4F73EB1B46 /* Backend API Keys (.env) */,
+				000000000000000010 /* Personal_Stylist */,
 				000000000000000000000020 /* Products */,
 				9FCB8F0A3085D5ED00FCB295 /* Recovered References */,
 			);

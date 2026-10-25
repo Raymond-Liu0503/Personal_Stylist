@@ -1,0 +1,29 @@
+# Outfit specialist 5 verification
+
+Implementation preserves weights, half-point rounding, 75% visibility coverage, and receipt/report schema version 1. Public suggestions add only optional `kind`, so older reports remain valid. Specialist version is 5.0.0 and rubric 5 comes from the compiled catalogue. The output budget increases to accommodate diagnoses plus four to six internal candidates; the server returns at most three selected suggestions.
+
+The model now diagnoses visible relationships before proposing actions. Every candidate references one diagnosis, declares whether it requires a purchase, and carries normalized principle, family, technique, kind, impact, and swap-attribute metadata. The server rejects invalid candidates independently, deduplicates actions and techniques, ranks visible impact first, and then prefers fresh techniques and distinct diagnoses/families within the same impact tier. Swaps, additions, removals, care, and accessories may be the primary move when they are the strongest grounded action. An explicit no-purchase constraint is enforced server-side.
+
+The guidance sources distinguish editorial design applications from empirical findings. Naumann et al. (2009) studied human judgments under different photographic conditions; Hester and Hehman (2023) discuss contextual and perceiver influences. Neither validates this model. The 2014 colour study is limited evidence, not a monochrome penalty. Source URLs and limitations are in knowledge.json. Seasonal prevalence is unverified, so dated trends are optional editorial inspiration pending professional review.
+
+Live comparison is pending consented external fixtures and provider access. No live quality, stability, latency or cost result is claimed by implementation tests.
+
+Use evals/cases/upgrade.example.json to prepare an external manifest with actual rights records and at least 18 adult consented cases. Cover tucked and untucked tops, an already-accessorized look, minimalism, maximalism, layering, footwear, colour, texture, garment care, and similar outfits submitted sequentially, alongside the existing safety and visibility cases. Include the same outfit under different poses and with/without intent. Retain all photos and outputs outside this repository.
+
+First compare the old prompt and rubric with the revised prompt while keeping the production model fixed. If the revised prompt passes its quality gates, compare `google/gemini-3.1-flash-lite` with `google/gemini-3.1-pro-preview` using the revised prompt. Use the same manifest, provider route, temperature, reasoning effort, and repetition count for each paired run. The runner accepts `EVAL_MODEL`, `EVAL_TEMPERATURE`, `EVAL_REASONING`, and `EVAL_LABEL`, and defaults to three repetitions. It records diagnoses, raw candidates, selected output, recent-technique input, diagnostics, latency, and cost. Run with `EVAL_LIVE=true`, `EVAL_RIGHTS_CONFIRMED=true`, and the existing approved provider configuration. Mock output is not live evidence. Never infer reviewer judgments from automated tests.
+
+For each case, reviewers compare baseline and upgraded reports and record the existing safety, invention, actionability, stability, latency, and cost fields. Also record `primaryVisiblyGrounded`, `containsTuckOrAccessorySuggestion`, `suggestionSpecificallyJustified`, `repeatedRecentTechnique`, and `repeatStrongestCredible`. Cases with multiple useful improvements should have semantically distinct actions with distinct benefits; different family labels alone do not prove diversity.
+
+Run `node evals/runner/upgrade-gates.mjs EXTERNAL_REVIEW_JSON`. Every emitted primary must be visibly grounded; at least 90% of improvable cases must produce a useful action; at least 90% of multi-suggestion reports must be distinct; at least 90% of emitted tuck/accessory suggestions must be specifically justified; and every technique repeated from the previous three reports must be reviewer-confirmed as the strongest credible option. Median latency must remain below 15 seconds, p95 below 35 seconds, and mean cost below $0.03 per analysis. After the model comparison, run `node evals/runner/model-gates.mjs BLIND_COMPARISON_JSON`; the selected model must win at least 60% of non-tied blind comparisons with two or more reviewers while passing the same quality and operational limits. These focused gates do not replace the separate 100-case beta gate in docs/backend/release.md.
+
+## Local verification — 2026-09-11
+
+- `npm test`: passed, including diagnosis linkage, candidate schema rules, deterministic reranking, explicit no-purchase filtering, last-three memory, provider generation settings, server-side technique resolution, and legacy reports/receipts.
+- Feature-specific report, results, and analysis-context mobile tests passed, including ranked labels and independent suggestion feedback. The full mobile suite did not complete on the Windows-mounted workspace; the affected files passed when run directly (the results file required an isolated run because the combined run exceeded its timeout).
+- npm run typecheck and the subsequent mobile typecheck: passed.
+- npm run lint: passed.
+- npm run check:edge and npm run test:edge: passed (1 Deno runtime test).
+- The specialist bundle was rebuilt from source; `git diff --check` passed.
+- Database-policy tests could not run because the local Supabase Postgres service was not listening on port 54322. The SQL test cases cover ownership, invalid indices, unsaved-run feedback, duplicate feedback, retention relationships, and account deletion, but still need an execution against a started local stack.
+
+No consented fixture manifest or live evaluation access was supplied in this implementation session. Baseline comparison, repeated visual quality review, recent-technique human review, pose invariance review, and live latency/cost measurements remain unperformed. The separate 100-case beta-release gate remains required.

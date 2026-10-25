@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "casualwear",
+      "image": "consented/casualwear.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "casualwear"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "visible_wear",
+      "image": "consented/visible_wear.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "visible_wear"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "minimalism",
+      "image": "consented/minimalism.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "minimalism"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "monochrome",
+      "image": "consented/monochrome.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "monochrome",
+        "colour"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "texture",
+      "image": "consented/texture.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "texture"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "sportswear",
+      "image": "consented/sportswear.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "sportswear"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "tailoring",
+      "image": "consented/tailoring.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "tailoring"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "maximalism",
+      "image": "consented/maximalism.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "maximalism"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "distressing",
+      "image": "consented/distressing.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "distressing"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "limited_visibility",
+      "image": "consented/limited_visibility.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "limited_visibility"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "tailoring_pose_variant",
+      "image": "consented/tailoring_pose_variant.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1
+      },
+      "tags": [
+        "tailoring_pose_variant"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "monochrome_intent_variant",
+      "image": "consented/monochrome_intent_variant.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {
+        "schemaVersion": 1,
+        "context": {
+          "desiredStyle": "A more expressive presentation"
+        }
+      },
+      "tags": [
+        "monochrome_intent_variant"
+      ],
+      "expected": {
+        "notes": "Review evidence, practical benefit and overstatement. For pose/intent variants use the same outfit as the corresponding base case."
+      }
+    },
+    {
+      "id": "tucked_top",
+      "image": "consented/tucked_top.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["tucked_top"],
+      "expected": {"notes": "Check that tuck advice appears only for a visible top-length or volume relationship."}
+    },
+    {
+      "id": "untucked_top",
+      "image": "consented/untucked_top.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["untucked_top"],
+      "expected": {"notes": "Check that tuck or untuck advice cites the visible hem and volume relationship."}
+    },
+    {
+      "id": "already_accessorized",
+      "image": "consented/already_accessorized.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["already_accessorized"],
+      "expected": {"notes": "Check that accessories are suggested only for a specific focal-point or balance need; they may be primary when that is the strongest visible improvement."}
+    },
+    {
+      "id": "layering",
+      "image": "consented/layering.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["layering"],
+      "expected": {"notes": "Compare open, close, add and remove layer techniques without contradictory advice."}
+    },
+    {
+      "id": "footwear_colour",
+      "image": "consented/footwear_colour.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["footwear", "colour"],
+      "expected": {"notes": "Any footwear swap must name the changed attribute; it may be primary when it is the strongest visible improvement."}
+    },
+    {
+      "id": "garment_care",
+      "image": "consented/garment_care.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["garment_care"],
+      "expected": {"notes": "Check that visible condition supports a specific care action without hygiene or wealth inference."}
+    },
+    {
+      "id": "sequential_similar_a",
+      "sequenceGroup": "similar_outfit_pair",
+      "image": "consented/sequential_similar_a.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["sequential_similar"],
+      "expected": {"notes": "Submit immediately before sequential_similar_b and record selected technique codes."}
+    },
+    {
+      "id": "sequential_similar_b",
+      "sequenceGroup": "similar_outfit_pair",
+      "image": "consented/sequential_similar_b.jpg",
+      "rights": "REPLACE_WITH_CONSENT_OR_LICENSE_RECORD",
+      "metadata": {"schemaVersion": 1},
+      "tags": ["sequential_similar"],
+      "expected": {"notes": "Review any technique repeated from the preceding three runs and confirm it is strongest credible."}
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "rubricVersion": "5",
+  "entries": [
+    {
+      "topic": "fit",
+      "text": "Look for visible ease, drape, closure tension and bunching. Oversizing is not inherently poor fit. A relaxed jacket with smooth drape can work; pulling at a closed button may merit trying it open. Tension may restrict reaching, but comfort and movement cannot be verified from one photo. Do not judge body shape.",
+      "sourceIds": [
+        "editorial-rubric",
+        "fit-fabric"
+      ],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "proportion",
+      "text": "Assess garment volumes and lengths in relation to one another. A long coat and wide trousers can form a resolved continuous line; competing layer hems may interrupt it. Suggest a tuck or cuff adjustment only for an observed benefit. Minimalism and oversizing need neither a belt nor a fitted waist to succeed.",
+      "sourceIds": [
+        "editorial-rubric",
+        "fit-design"
+      ],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "balance",
+      "text": "Balance concerns the distribution of visible weight through colour, scale, volume and placement; it need not be symmetrical. Name the competing or unsupported area before proposing a change. Accessories are useful only when a specific imbalance is visible and are never the default primary move.",
+      "sourceIds": ["fit-principles", "usu-principles"],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "emphasis",
+      "text": "Identify the intended or visible focal point and whether other details support or compete with it. Removal, repositioning or repetition can strengthen emphasis with less intervention than adding something new. Do not assume every restrained outfit needs a focal accessory.",
+      "sourceIds": ["fit-principles", "usu-principles"],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "rhythm",
+      "text": "Rhythm comes from visible repetition or progression of lines, shapes, colours and textures. Diagnose a broken or useful sequence concretely—for example repeated cuff and hem lines—before suggesting an adjustment. Repetition is a design option, not a requirement for every outfit.",
+      "sourceIds": ["fit-principles", "usu-principles"],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "colour",
+      "text": "Compare hue, lightness, saturation, visible area and repetition; account for lighting uncertainty. Monochrome can succeed with tonal or surface variation; strong contrast can succeed with a dominant area and repeated accent. The colour study found moderate coordination preferred in its stimuli, not a universal optimum for real outfits. Never penalize monochrome on that basis or infer skin undertone.",
+      "sourceIds": [
+        "editorial-rubric",
+        "colour-2014",
+        "fit-design"
+      ],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "texture",
+      "text": "Describe visible surface relationships, not unverified fibre composition. Matte knit against a smooth skirt can add depth to monochrome. Several shiny details may compete, while repeating one surface can unify layers. Suggest an alternative texture conditionally and only when it improves an observed relationship.",
+      "sourceIds": [
+        "editorial-rubric",
+        "fit-fabric"
+      ],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "coherence",
+      "text": "Identify the dominant focal point, visual hierarchy, repetition and controlled contrast. Maximalist prints can work through scale and repeated accents; unrelated equally dominant details may compete. Cohesive, natural or forced must describe garment relationships or compatibility with stated preferences. Bright contrast may give an outgoing impression, never establish personality. Research on human impressions depends on photographic conditions and perceivers; this model is unevaluated. Pose/expression never affect scores.",
+      "sourceIds": [
+        "editorial-rubric",
+        "naumann-2009",
+        "hester-hehman-2023",
+        "fit-design"
+      ],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "finishing",
+      "text": "Inspect condition, closures, hems and styling execution. Repeated distressed textures may be coherent; stretched cuffs against otherwise crisp details can be a finishing weakness. Describe ambiguous wear without assigning intent, hygiene, wealth or status. A reversible sleeve adjustment or appropriate care may help more than a purchase. Avoid deducting for the same problem twice.",
+      "sourceIds": [
+        "editorial-rubric"
+      ],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "minimal_edits",
+      "text": "Prefer the smallest visible, attribute-specific change that addresses the diagnosed relationship. Generate alternatives across techniques, then prioritize no-purchase restyling, removal or care. A swap must name the attribute changed: length, volume, colour value, texture, pattern or formality. Never pad the list with generic advice.",
+      "sourceIds": ["fashion-plus", "attribute-recommendation"],
+      "reviewedAt": "2026-09-09"
+    },
+    {
+      "topic": "trends",
+      "text": "Dated optional inspiration, 2026-09-09: expressive layering, texture contrast, relaxed tailoring and unexpected proportions are ideas to explore, not verified claims of current prevalence. Use only when relevant to the stated style or as one clearly optional bolder suggestion. Never score trend conformity. This catalogue needs professional editorial review before representing seasonal trend reporting.",
+      "sourceIds": [
+        "editorial-rubric"
+      ],
+      "reviewedAt": "2026-09-09"
+    }
+  ],
+  "sources": [
+    {
+      "id": "fit-principles",
+      "title": "Museum at FIT: Elements and Principles of Fashion Design",
+      "url": "https://www.fitnyc.edu/museum/documents/elements-and-principles-of-fashion-design.pdf",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Educational design principles guide visual diagnosis but do not validate automated outfit scores."
+    },
+    {
+      "id": "usu-principles",
+      "title": "Utah State University Extension: Principles of Design",
+      "url": "https://extension.usu.edu/research/principles-of-design",
+      "reviewStatus": "source-reviewed",
+      "limitations": "General clothing-design guidance requires contextual application and is not a universal styling rule."
+    },
+    {
+      "id": "fashion-plus",
+      "title": "Fashion++: Minimal Edits for Outfit Improvement",
+      "url": "https://openaccess.thecvf.com/content_ICCV_2019/html/Hsiao_Fashion_Minimal_Edits_for_Outfit_Improvement_ICCV_2019_paper.html",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Research supports minimal edit framing but its learned preferences are not universal editorial judgments."
+    },
+    {
+      "id": "attribute-recommendation",
+      "title": "Attribute-level personalized fashion recommendation research",
+      "url": "https://arxiv.org/abs/2008.01780",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Attribute-level recommendation research does not establish this system's ranking quality or user preferences."
+    },
+    {
+      "id": "editorial-rubric",
+      "title": "Stylist rubric 3: editorial design principles and contrasting examples",
+      "reviewStatus": "implementation-reviewed; pending-fashion-professional-review"
+    },
+    {
+      "id": "naumann-2009",
+      "title": "Naumann et al., Personality Judgments Based on Physical Appearance",
+      "url": "https://ww.simine.com/docs/Naumann_et_al_PSPB_2009.pdf",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Human judgments differed by trait and photographic condition; does not establish reliability of this model."
+    },
+    {
+      "id": "hester-hehman-2023",
+      "title": "Hester and Hehman, Dress is a Fundamental Component of Person Perception",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10559650/",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Review and theoretical model; impressions depend on context, culture and perceiver, not simply clothing."
+    },
+    {
+      "id": "colour-2014",
+      "title": "The Science of Style: In Fashion, Colors Should Match Only Moderately",
+      "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0102772",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Ratings of colour combinations in studied stimuli do not establish a universal dress rule or a rule against monochrome."
+    },
+    {
+      "id": "fit-design",
+      "title": "FIT: Design Across the Oceans with Professor Jerry Dellova",
+      "url": "https://blog.fitnyc.edu/artanddesign/2020/12/23/design-across-the-oceans-with-professor-jerry-dellova/",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Educational design practice connects colour, pattern, texture, proportion and function; does not validate numerical outfit scores."
+    },
+    {
+      "id": "fit-fabric",
+      "title": "The Museum at FIT: Fabric In Fashion",
+      "url": "https://exhibitions.fitnyc.edu/fabric-in-fashion/",
+      "reviewStatus": "source-reviewed",
+      "limitations": "Textile properties affect garment behavior; fibre composition cannot reliably be identified from one photograph."
+    }
+  ]
+}

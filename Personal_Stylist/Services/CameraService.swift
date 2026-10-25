@@ -8,32 +8,37 @@ final class CaptureEngine: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
     let session = AVCaptureSession()
     private let output = AVCapturePhotoOutput()
     private let queue = DispatchQueue(label: "stylist.camera")
+    private var configuredPosition: AVCaptureDevice.Position?
     private var completion: (@Sendable (Result<Data, Error>) -> Void)?
-    func start(position: AVCaptureDevice.Position) async throws {
+    func start(position: AVCaptureDevice.Position, reconfigure: Bool = false) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
                 do {
-                    self.session.beginConfiguration()
-                    self.session.sessionPreset = .photo
-                    self.session.inputs.forEach { self.session.removeInput($0) }
-                    guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else { throw StylistError.message("This device has no available camera. Choose a photo instead.") }
-                    let input = try AVCaptureDeviceInput(device: device)
-                    guard self.session.canAddInput(input) else { throw StylistError.message("The camera could not start.") }
-                    self.session.addInput(input)
-                    if self.session.outputs.isEmpty {
-                        guard self.session.canAddOutput(self.output) else { throw StylistError.message("Photo capture is unavailable.") }
-                        self.session.addOutput(self.output)
+                    if self.configuredPosition != position || reconfigure {
+                        self.session.beginConfiguration()
+                        do {
+                            defer { self.session.commitConfiguration() }
+                            self.configuredPosition = nil
+                            self.session.sessionPreset = .photo
+                            self.session.inputs.forEach { self.session.removeInput($0) }
+                            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else { throw StylistError.message("Camera unavailable. Choose a photo instead.") }
+                            let input = try AVCaptureDeviceInput(device: device)
+                            guard self.session.canAddInput(input) else { throw StylistError.message("The camera could not start.") }
+                            self.session.addInput(input)
+                            if self.session.outputs.isEmpty {
+                                guard self.session.canAddOutput(self.output) else { throw StylistError.message("Photo capture is unavailable.") }
+                                self.session.addOutput(self.output)
+                            }
+                            self.configuredPosition = position
+                        }
                     }
-                    self.session.commitConfiguration()
                     if let connection = self.output.connection(with: .video) {
                         if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
                         if connection.isVideoMirroringSupported { connection.automaticallyAdjustsVideoMirroring = false; connection.isVideoMirrored = false }
                     }
-                    self.session.startRunning()
+                    if !self.session.isRunning { self.session.startRunning() }
                     continuation.resume()
-                } catch {
-                    self.session.commitConfiguration(); continuation.resume(throwing: error)
-                }
+                } catch { continuation.resume(throwing: error) }
             }
         }
     }
@@ -71,14 +76,20 @@ final class CaptureEngine: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
     var countdown: Int?
     var busy = false
     @ObservationIgnored private var generation = UUID()
+    @ObservationIgnored private var captureGeneration = UUID()
     @ObservationIgnored private var captureTask: Task<Void, Never>?
     @ObservationIgnored private var startTask: Task<Void, Never>?
     @ObservationIgnored private var startupDeadline: Task<Void, Never>?
-    func start() {
-        stop(); let epoch = generation
+    func start(allowPermissionRequest: Bool = true, reconfigure: Bool = false) {
+        guard !ready, startTask == nil else { return }
+        let epoch = generation
+        let started = PerformanceTrace.now
         startTask = Task {
+            defer { if epoch == generation { startTask = nil; startupDeadline?.cancel(); startupDeadline = nil } }
             var granted = AVCaptureDevice.authorizationStatus(for: .video) == .authorized
-            if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined { granted = await AVCaptureDevice.requestAccess(for: .video) }
+            if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
+                guard allowPermissionRequest else { return }
+                granted = await AVCaptureDevice.requestAccess(for: .video) }
             guard epoch == generation, !Task.isCancelled else { return }
             denied = !granted
             guard granted else { return }
@@ -89,10 +100,11 @@ final class CaptureEngine: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
                 } catch { }
             }
             do {
-                try await engine.start(position: front ? .front : .back)
+                try await engine.start(position: front ? .front : .back, reconfigure: reconfigure)
                 guard epoch == generation, !Task.isCancelled else { return }
                 startupDeadline?.cancel(); startupDeadline = nil
                 ready = true; error = nil
+                PerformanceTrace.finish("camera_ready", since: started)
             } catch { if epoch == generation { self.error = error.localizedDescription } }
         }
     }
@@ -100,10 +112,16 @@ final class CaptureEngine: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
         generation = UUID(); startTask?.cancel(); captureTask?.cancel(); startupDeadline?.cancel(); startupDeadline = nil
         startTask = nil; captureTask = nil; countdown = nil; busy = false; ready = false; engine.stop()
     }
-    func flip() { guard !busy else { return }; front.toggle(); start() }
+    func restart() { stop(); error = nil; start(reconfigure: true) }
+    func cancelCountdown() {
+        captureGeneration = UUID(); captureTask?.cancel(); captureTask = nil
+        countdown = nil; busy = false
+    }
+    func flip() { guard !busy else { return }; stop(); front.toggle(); start() }
     func takePhoto(timer: Int, receive: @escaping @MainActor (Data) async -> Void) {
         guard ready, !busy else { return }
         busy = true; error = nil; let epoch = generation
+        let captureEpoch = UUID(); captureGeneration = captureEpoch
         captureTask = Task {
             do {
                 if timer > 0 {
@@ -115,11 +133,11 @@ final class CaptureEngine: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
                 }
                 countdown = nil
                 let data = try await engine.capture()
-                guard epoch == generation, !Task.isCancelled else { return }
+                guard epoch == generation, captureEpoch == captureGeneration, !Task.isCancelled else { return }
                 await receive(data)
             } catch is CancellationError { }
-            catch { if epoch == generation { self.error = error.localizedDescription } }
-            if epoch == generation { busy = false; countdown = nil; captureTask = nil }
+            catch { if epoch == generation, captureEpoch == captureGeneration { self.error = error.localizedDescription } }
+            if epoch == generation, captureEpoch == captureGeneration { busy = false; countdown = nil; captureTask = nil }
         }
     }
 }

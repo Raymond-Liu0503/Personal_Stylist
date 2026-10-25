@@ -54,6 +54,8 @@ struct AuthSession: Codable, Sendable {
         self.configuration = configuration; self.auth = auth; self.transport = transport
     }
     func request(_ path: String, method: String = "GET", body: Data? = nil, contentType: String = "application/json", requestID: String? = nil, query: [URLQueryItem] = []) async throws -> Data {
+        let started = PerformanceTrace.now
+        defer { if path == "/analyze/outfit" { PerformanceTrace.finish("analysis_request", since: started, id: requestID ?? "none") } }
         let generation = auth.generation
         let session = try await auth.validSession()
         try Task.checkCancellation()

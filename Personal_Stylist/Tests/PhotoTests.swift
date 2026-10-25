@@ -21,7 +21,8 @@ final class PhotoTests: XCTestCase {
         XCTAssertTrue(CGImageDestinationFinalize(encoder))
         let photo = try await service.prepare(input as Data)
         XCTAssertEqual(photo.width, 1600); XCTAssertEqual(photo.height, 1200)
-        let bytes = try Data(contentsOf: photo.url)
+        let bytes = try await service.read(photo)
+        XCTAssertEqual(bytes, try Data(contentsOf: photo.url))
         XCTAssertLessThanOrEqual(bytes.count, 2 * 1024 * 1024)
         let source = CGImageSourceCreateWithData(bytes as CFData, nil)!
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil)! as NSDictionary

@@ -3,7 +3,7 @@ import Observation
 
 @MainActor @Observable final class AppModel {
     enum Flow: String { case home, camera, review, processing, result }
-    enum Tab: Hashable { case home, saved, account }
+    enum Sheet: String, Identifiable { case saved, account; var id: String { rawValue } }
     let config: AppConfiguration
     @ObservationIgnored let auth: AuthService
     @ObservationIgnored let api: APIClient
@@ -19,7 +19,11 @@ import Observation
     var busy = false
     var error: String?
     var notice: String?
-    var tab: Tab = .home
+    var sheet: Sheet?
+    var refreshing = false
+    var accessError: String?
+    var resultReadyAt: TimeInterval?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
     var flow: Flow = .home
     var photo: PreparedPhoto?
     var preparing = false
@@ -44,35 +48,55 @@ import Observation
         api = APIClient(configuration: config, auth: auth, transport: transport)
     }
     var onboarded: Bool { signedIn && bootstrap?.hasConsent == true }
-    var analysisBlock: String? { bootstrap?.analysisBlock ?? (bootstrap == nil ? "Account access could not be checked. Refresh access to try again." : nil) }
+    var analysisBlock: String? { refreshing ? "Checking access…" : bootstrap?.analysisBlock ?? (bootstrap == nil ? (accessError ?? "Account access could not be checked. Refresh access to try again.") : nil) }
     var validIntent: Bool { (try? intent.context(custom: customIntent)) != nil && prompt.utf16.count <= 1000 }
     func start() async {
+        let started = PerformanceTrace.now
         starting = true; error = nil; startupFailed = false
+        invalidateRefresh(); bootstrap = nil
         do {
             try await photos.sweep()
             try auth.restore(); signedIn = auth.userID != nil
-            if signedIn { await refresh() }
         } catch { self.error = error.localizedDescription; startupFailed = true }
         starting = false
+        PerformanceTrace.finish("local_startup", since: started)
+        if signedIn && !startupFailed { await refresh() }
     }
     func resetStartup() async {
         await perform {
+            invalidateRefresh(); signedIn = false; bootstrap = nil
             try await auth.signOut()
             await start()
         }
     }
-    func refresh() async {
-        guard signedIn else { return }
+    private func invalidateRefresh() {
+        refreshGeneration = UUID()
+        refreshTask?.cancel(); refreshTask = nil; refreshing = false
+    }
+    func refresh(force: Bool = false) async {
+        guard signedIn, !starting else { return }
+        if force { invalidateRefresh() }
+        if let refreshTask { await refreshTask.value; return }
         let epoch = UUID(); refreshGeneration = epoch
-        do {
-            let value = try await api.bootstrap()
-            guard refreshGeneration == epoch, signedIn else { return }
-            bootstrap = value
-        } catch is CancellationError { }
-        catch {
-            guard refreshGeneration == epoch, signedIn else { return }
-            bootstrap = nil; self.error = error.localizedDescription
+        refreshing = true
+        let task = Task { @MainActor in
+            let started = PerformanceTrace.now
+            defer {
+                PerformanceTrace.finish("account_refresh", since: started)
+                if refreshGeneration == epoch { refreshTask = nil; refreshing = false }
+            }
+            do {
+                let value = try await api.bootstrap()
+                guard refreshGeneration == epoch, signedIn, !Task.isCancelled else { return }
+                bootstrap = value; accessError = nil
+            } catch is CancellationError { }
+            catch {
+                guard refreshGeneration == epoch, signedIn else { return }
+                bootstrap = nil; accessError = error.localizedDescription
+            }
         }
+        refreshTask = task
+        await task.value
     }
     func perform(_ operation: () async throws -> Void) async {
         guard !busy else { return }
@@ -88,7 +112,7 @@ import Observation
             try await auth.signInApple(token: credential.token, nonce: credential.nonce)
             signedIn = true
             try await api.consent(true)
-            await refresh()
+            await refresh(force: true)
         }
     }
     func localSignIn(email: String, password: String) async {
@@ -96,19 +120,21 @@ import Observation
             try await auth.signInLocal(email: email, password: password)
             signedIn = true
             try await api.consent(true)
-            await refresh()
+            await refresh(force: true)
         }
     }
-    func acceptConsent() async { await perform { try await api.consent(true); await refresh() } }
+    func acceptConsent() async { await perform { invalidateRefresh(); try await api.consent(true); await refresh(force: true) } }
     func prepare(_ data: Data) async {
-        guard !preparing && !submitting else { return }
+        guard onboarded, !preparing, !submitting else { return }
         let epoch = UUID(); generation = epoch
+        let started = PerformanceTrace.now
         preparing = true; error = nil
-        defer { if generation == epoch { preparing = false } }
+        defer { PerformanceTrace.finish("photo_preparation", since: started); if generation == epoch { preparing = false } }
         do {
             photo = nil
             // A previous cleanup failure must be resolved before accepting another photo.
             try await photos.sweep()
+            guard generation == epoch, signedIn, !Task.isCancelled else { return }
             let value = try await photos.prepare(data)
             guard generation == epoch, signedIn, !Task.isCancelled else { try await photos.remove(value); return }
             photo = value; flow = .review
@@ -123,29 +149,41 @@ import Observation
         submitting = true; error = nil; flow = .processing
         analysisTask = Task {
             do {
-                let bytes = try Data(contentsOf: photo.url)
+                let bytes = try await photos.read(photo)
+                try Task.checkCancellation()
                 let metadata = try AnalysisMetadata(prompt: capturedPrompt, context: capturedIntent.context(custom: capturedCustom))
                 let response = try await api.analyze(image: bytes, metadata: metadata, requestID: requestID)
                 guard generation == epoch, !Task.isCancelled else { return }
-                result = response; self.photo = nil; flow = .result
-                do { try await photos.remove(photo) } catch { self.error = "Temporary-photo cleanup failed. Close the assessment and retry cleanup before continuing." }
+                result = response; resultReadyAt = PerformanceTrace.now; self.photo = nil; flow = .result
+                do { try await photos.remove(photo) } catch { if generation == epoch { self.error = "Temporary-photo cleanup failed. Close the assessment and retry cleanup before continuing." } }
             } catch is CancellationError { }
             catch { if generation == epoch { self.error = error.localizedDescription } }
-            if generation == epoch { submitting = false; analysisTask = nil }
-            await refresh()
+            if generation == epoch {
+                submitting = false; analysisTask = nil
+                Task {
+                    guard generation == epoch, signedIn else { return }
+                    await refresh(force: true)
+                }
+            }
         }
     }
     func clearAnalysis(preserveBrief: Bool = false) async throws {
         generation = UUID()
         let task = analysisTask; analysisTask = nil; task?.cancel()
         submitting = false; preparing = false
-        photo = nil; result = nil; savedID = nil; reportFeedbackSent = false; suggestionFeedback = [:]
+        photo = nil; result = nil; resultReadyAt = nil; savedID = nil; reportFeedbackSent = false; suggestionFeedback = [:]
         if !preserveBrief { prompt = ""; intent = .general; customIntent = "" }
-        await task?.value
         try await photos.sweep()
+        if task != nil, signedIn {
+            let session = auth.generation
+            Task {
+                guard signedIn, auth.generation == session else { return }
+                await refresh(force: true)
+            }
+        }
     }
     func navigate(_ destination: Flow, preserveBrief: Bool = false) async {
-        await perform { try await clearAnalysis(preserveBrief: preserveBrief); flow = destination; tab = .home }
+        await perform { try await clearAnalysis(preserveBrief: preserveBrief); flow = destination; sheet = nil }
     }
     func saveReport() async {
         guard let result, savedID == nil else { return }
@@ -195,17 +233,18 @@ import Observation
             let lines = constraints.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
             let preferences = try Preferences(desiredStyle: style.isEmpty ? nil : style, constraints: lines.isEmpty ? nil : lines).validated()
             _ = try Contracts.decode(Preferences.self, data: await api.request("/profile", method: "PUT", body: JSONEncoder().encode(preferences)), schema: Contracts.preferences)
-            await refresh(); notice = "Preferences saved."
+            await refresh(force: true); notice = "Preferences saved."
         }
     }
     func withdrawConsent() async {
         await perform {
             try await clearAnalysis(); clearHistory()
-            try await api.consent(false); await refresh(); flow = .home; tab = .home
+            invalidateRefresh(); bootstrap = nil
+            try await api.consent(false); await refresh(force: true); flow = .home; sheet = nil
         }
     }
     private func localSignOut() async throws {
-        signedIn = false; bootstrap = nil; refreshGeneration = UUID(); clearHistory(); timer = 0; flow = .home; tab = .home
+        invalidateRefresh(); signedIn = false; bootstrap = nil; clearHistory(); timer = 0; flow = .home; sheet = nil
         // Always attempt both credential removal and photo cleanup, even if either fails.
         var failure: Error?
         do { try await clearAnalysis() } catch { failure = error }

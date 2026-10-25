@@ -1,0 +1,15 @@
+import {readFileSync} from 'node:fs';
+const filename=process.argv[2];if(!filename)throw Error('Usage: node evals/runner/upgrade-gates.mjs EXTERNAL_REVIEW_JSON');
+const {cases}=JSON.parse(readFileSync(filename,'utf8'));
+if(!Array.isArray(cases)||!cases.length)throw Error('No reviewed cases');
+const fraction=(rows,fn)=>rows.length?rows.filter(fn).length/rows.length:0;
+const assessable=cases.filter(c=>c.assessable===true);
+const multiple=cases.filter(c=>c.multipleUsefulImprovements===true);
+const emittedPrimary=cases.filter(c=>c.primaryEmitted===true);
+const improvable=cases.filter(c=>c.reviewersIdentifiedCredibleImprovement===true);
+const required=['casualwear','visible_wear','minimalism','monochrome','colour','texture','sportswear','footwear','layering','tailoring','maximalism','distressing','garment_care','tucked_top','untucked_top','already_accessorized','limited_visibility','sequential_similar'];
+const tuckOrAccessory=cases.filter(c=>c.tags?.some(t=>['tucked_top','untucked_top','already_accessorized'].includes(t))&&c.containsTuckOrAccessorySuggestion===true);
+const repeated=cases.filter(c=>c.repeatedRecentTechnique===true);
+const latencies=cases.map(c=>c.latencyMs).filter(Number.isFinite).sort((a,b)=>a-b);const percentile=p=>latencies[Math.max(0,Math.ceil(p*latencies.length)-1)];
+const gates={eighteenCases:new Set(cases.map(c=>c.id)).size>=18,coverage:required.every(t=>cases.some(c=>c.tags?.includes(t))),baselineAndUpgrade:cases.every(c=>c.baselineReviewed===true&&c.upgradeReviewed===true),variants:cases.some(c=>c.explicitIntent===true)&&cases.some(c=>c.explicitIntent===false)&&cases.some(c=>c.poseVariantReviewed===true),impressionsReviewed:cases.every(c=>c.impressionsEvidenceReviewed===true&&c.noOverstatedImpressions===true),noMaterialInvention:fraction(cases,c=>c.noMaterialInvention===true)>=.9,actionable:fraction(cases,c=>c.actionable===true)>=.9,stable:fraction(assessable,c=>Array.isArray(c.repeatedScores)&&c.repeatedScores.length===3&&c.repeatedScores.every(Number.isFinite)&&Math.max(...c.repeatedScores)-Math.min(...c.repeatedScores)<=1)>=.9,groundedPrimary:emittedPrimary.every(c=>c.primaryVisiblyGrounded===true),usefulActionCoverage:improvable.length===0||fraction(improvable,c=>c.usefulActionEmitted===true)>=.9,distinctSuggestions:multiple.length===0||fraction(multiple,c=>c.distinctUsefulSuggestions===true)>=.9,specificTuckAndAccessory:tuckOrAccessory.length===0||fraction(tuckOrAccessory,c=>c.suggestionSpecificallyJustified===true)>=.9,repeatsStrongest:repeated.every(c=>c.repeatStrongestCredible===true),liveMeasurements:cases.every(c=>c.live===true&&Number.isFinite(c.latencyMs)&&c.latencyMs>0&&Number.isFinite(c.costMicrodollars)&&c.costMicrodollars>=0),medianUnder15Seconds:latencies.length===cases.length&&percentile(.5)<15000,p95Under35Seconds:latencies.length===cases.length&&percentile(.95)<35000,meanCostUnderThreeCents:cases.every(c=>Number.isFinite(c.costMicrodollars))&&cases.reduce((n,c)=>n+c.costMicrodollars,0)/cases.length<30000};
+console.log(JSON.stringify({passed:Object.values(gates).every(Boolean),gates},null,2));if(Object.values(gates).some(v=>!v))process.exitCode=1;

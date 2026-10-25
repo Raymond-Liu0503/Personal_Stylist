@@ -4,16 +4,18 @@ Start with **local mock mode** below. It lets you test the native app without bu
 
 ## 1. Know which folder you are configuring
 
-There are currently two projects on this Mac:
+The native app and its backend now live in this single repository:
 
-| Folder | What it contains | Configuration file |
-| --- | --- | --- |
-| This native iOS folder, containing `Personal Stylist.xcodeproj` | SwiftUI app | `LocalConfig.plist` at the top of this folder |
-| `/Users/raymondliu/Projects/personal-stylist` | Database migrations, Supabase Edge Function, AI integration, and the original Expo app | `supabase/functions/.env` inside that backend folder |
+| Location (relative to the repository root) | Purpose |
+| --- | --- |
+| `Personal_Stylist/` | SwiftUI app |
+| `Personal_Stylist/LocalConfig.plist` | Public Supabase connection settings for iOS |
+| `supabase/` | Database migrations and backend Edge Function |
+| `supabase/functions/.env` | Private backend configuration, including `OPENROUTER_API_KEY` |
 
-The native app calls the backend, which calls the AI provider. Xcode only needs the public Supabase connection details. Putting a private API key in `LocalConfig.plist` would bundle it into the iPhone app.
+Run backend commands from `/Users/raymondliu/Projects/Personal_Stylist`, the repository root. Open `Personal_Stylist/Personal Stylist.xcodeproj` for the native app. The previous separate backend checkout is no longer needed for this setup.
 
-The previous instructions referred to the original repository's guide at `/Users/raymondliu/Projects/personal-stylist/docs/setup.md`. **This file is the native iOS guide** and includes the steps you need without requiring you to find that other guide.
+The native app calls the backend, which calls the AI provider. Private keys in `LocalConfig.plist` would be bundled into the iPhone app. `.env` is ignored by Git and stays outside the iOS source folder. Finder hides dotfiles; press **Command–Shift–.** to reveal it.
 
 ## 2. Credential map: where each value comes from
 
@@ -21,7 +23,7 @@ The previous instructions referred to the original repository's guide at `/Users
 | --- | --- | --- |
 | `SUPABASE_URL` | Local: `npx supabase status` → API URL. Hosted: your Supabase project's Connect dialog. | iOS `LocalConfig.plist` |
 | `SUPABASE_PUBLISHABLE_KEY` | Local: `npx supabase status` → **anon** or **publishable** key. Hosted: Connect dialog or Settings → API Keys → publishable key. | iOS `LocalConfig.plist` |
-| Local test email and password | Run `npm run local:user` in the backend folder after migrations. | Enter into the app's **Local test login** fields |
+| Local test email and password | Run `npm run local:user` in the repository root after migrations. | Enter into the app's **Local test login** fields |
 | `REPORT_SIGNING_SECRET` | Generate it yourself with `openssl rand -hex 32`. It signs receipts used to save reports. | Backend `.env`; hosted Edge Function Secrets later |
 | `OPENROUTER_API_KEY` | Create a key at [OpenRouter → Settings → Keys](https://openrouter.ai/settings/keys). Used only for real AI. | Backend `.env`; hosted Edge Function Secrets later |
 | `APPLE_CLIENT_ID` | This native app's registered Apple bundle ID, currently `com.personalstylist.beta`. | Backend `.env` for account deletion; also register the bundle ID in Supabase's Apple provider |
@@ -36,22 +38,22 @@ This route does not require creating a hosted project on supabase.com. The CLI s
 
 ### A. Install the backend tools
 
-You need Node.js and a running Docker-compatible container runtime on the Mac. The backend repository pins Node **22.23.2** in `.nvmrc`, and installs Supabase CLI **2.75.0** through npm. Xcode does not install these tools for you.
+You need Node.js and a running Docker-compatible container runtime on the Mac. The repository root pins Node **22.23.2** in `.nvmrc`, and installs Supabase CLI **2.75.0** through npm. Xcode does not install these tools for you.
 
 Open Terminal and run:
 
 ```sh
-cd /Users/raymondliu/Projects/personal-stylist
+cd /Users/raymondliu/Projects/Personal_Stylist
 ```
 
 If you already use `nvm`, run `nvm install` and `nvm use` here to select the pinned Node version. Otherwise install that Node version through your preferred Node installer. Install/start Docker Desktop or a compatible runtime before the next step. See [Supabase's local development guide](https://supabase.com/docs/guides/local-development/cli/getting-started) for container-runtime setup.
 
 ### B. Install dependencies and start Supabase
 
-Run these commands in the **backend folder**:
+Run these commands in the **repository root**:
 
 ```sh
-npm ci
+npm install
 npm run skills:build
 npx supabase start
 ```
@@ -66,7 +68,7 @@ npx supabase db reset
 
 ### C. Create the backend environment file
 
-Still in the backend folder, create the real `.env` file if it does not exist:
+Still in the repository root, create the real `.env` file if it does not exist:
 
 ```sh
 test -f supabase/functions/.env || cp supabase/functions/.env.example supabase/functions/.env
@@ -94,7 +96,7 @@ APPLE_CLIENT_ID=
 APPLE_CLIENT_SECRET=
 ```
 
-There is also an annotated template in [backend.local.env.example](backend.local.env.example). It is documentation; the backend reads the `.env` file in its own repository. Keep the same signing secret across restarts if you want previously issued save receipts to remain valid.
+There is also an annotated template in [backend.local.env.example](backend.local.env.example). It is documentation; the backend reads `supabase/functions/.env` at the repository root. Keep the same signing secret across restarts if you want previously issued save receipts to remain valid.
 
 The local CLI supplies `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to the function. You do not need to copy these server values yourself. See [Supabase's function environment-variable guide](https://supabase.com/docs/guides/functions/secrets).
 
@@ -113,7 +115,7 @@ Leave this Terminal running. After changing `.env`, stop it with Control-C and r
 Open a **second Terminal**, and run:
 
 ```sh
-cd /Users/raymondliu/Projects/personal-stylist
+cd /Users/raymondliu/Projects/Personal_Stylist
 npx supabase status
 ```
 
@@ -159,6 +161,8 @@ This confirms that the app, authentication, database, and Edge Function are conn
 
 For a physical iPhone, use the Mac's private LAN address, such as `http://192.168.1.20:54321`, instead of `127.0.0.1`. The phone and Mac need to be on the same reachable network. Allow local-network access on the phone. Local test login appears only in Debug with `ENVIRONMENT=local` and a localhost/private-LAN HTTP backend on port 54321.
 
+Debug builds omit the Sign in with Apple entitlement so a free Apple Personal Team can sign the app for local device testing. Select your team in Xcode and use **Local test login**. Release builds retain the entitlement. To test Apple sign-in in Debug with a supported developer team, set the app target's Debug **Code Signing Entitlements** build setting to `Config/PersonalStylist.entitlements`; regenerating the project restores the local Debug default.
+
 ## 5. Add the real AI key when you are ready
 
 The existing backend uses **OpenRouter**. It does not ask the native app for separate OpenAI or Gemini API keys.
@@ -174,7 +178,7 @@ The existing backend uses **OpenRouter**. It does not ask the native app for sep
    ```
 
 3. For local development, keep `APP_ENV=local`. The source backend supports the real provider locally, so you can continue using the local test account.
-4. Review the configured model/provider route before setting `OPENROUTER_CONFIG_APPROVED=true`. The backend requires image input, tools, structured output, the expected reasoning parameters, and its configured zero-data-retention route. It checks availability and refuses to start analysis if the route is incompatible. The backend repository's `docs/release.md` describes the provider review.
+4. Review the configured model/provider route before setting `OPENROUTER_CONFIG_APPROVED=true`. The backend requires image input, tools, structured output, the expected reasoning parameters, and its configured zero-data-retention route. It checks availability and refuses to start analysis if the route is incompatible. The [backend release guide](../../docs/backend/release.md) describes the provider review.
 5. Set `ANALYSIS_ENABLED=true` and `OUTFIT_ENABLED=true`, restart the function server, and refresh account access in the app. Results should stop showing the mock label when the live provider is configured successfully.
 
 You can copy the variable names from [backend.live.env.example](backend.live.env.example), but its defaults deliberately leave analysis/approval disabled. Only enable them when the real-provider configuration is ready. Never copy the OpenRouter key into `LocalConfig.plist`.
@@ -210,7 +214,7 @@ Create the signing key through Apple Developer → Certificates, Identifiers & P
 Local Supabase and hosted Supabase are separate databases with different keys and users. Creating a project on supabase.com does not populate the database or deploy this app's function automatically.
 
 1. Create/select your project at [Supabase Dashboard](https://supabase.com/dashboard). Save its database password for CLI database operations; the native app does not need it.
-2. In the backend repository, authenticate the CLI and link the hosted project using its project reference:
+2. In the repository root, authenticate the CLI and link the hosted project using its project reference:
 
    ```sh
    npx supabase login
@@ -221,7 +225,7 @@ Local Supabase and hosted Supabase are separate databases with different keys an
 
    The reference is the project identifier used in its default URL, `https://YOUR_PROJECT_REF.supabase.co`. These commands apply migrations to the hosted database; use a development project first.
 
-3. Create `supabase/functions/.env.development` in the backend repository using the variables in [backend.live.env.example](backend.live.env.example). Use a fresh signing secret, `APP_ENV=development`, your OpenRouter key, and Apple revocation credentials. Keep analysis/approval disabled until the provider review is complete. The existing backend allows its deterministic mock provider only with `APP_ENV=local`.
+3. Create `supabase/functions/.env.development` in the repository root using the variables in [backend.live.env.example](backend.live.env.example). Use a fresh signing secret, `APP_ENV=development`, your OpenRouter key, and Apple revocation credentials. Keep analysis/approval disabled until the provider review is complete. The existing backend allows its deterministic mock provider only with `APP_ENV=local`.
 4. Set the hosted function's private values and deploy its code:
 
    ```sh
@@ -240,7 +244,7 @@ Local Supabase and hosted Supabase are separate databases with different keys an
 | Symptom | Check |
 | --- | --- |
 | “Add your public Supabase configuration” | Replace the placeholder in `LocalConfig.plist`, then rebuild. Check that this file belongs to the native project you opened. |
-| `npx supabase start` fails | Start the container runtime; run from the backend folder containing `supabase/config.toml`. |
+| `npx supabase start` fails | Start the container runtime; run from the repository root containing `supabase/config.toml`. |
 | No local test-login section | Use Debug, `ENVIRONMENT=local`, and a private/local HTTP URL on port 54321. |
 | Sign-in fails with the printed email/password | Use the local URL and public key; hosted and local accounts are separate. A database reset removes local accounts, so provision another user afterward. |
 | Phone cannot connect | On a phone, localhost means the phone. Use the Mac's LAN IP, allow local-network access, and check firewall/network reachability. |

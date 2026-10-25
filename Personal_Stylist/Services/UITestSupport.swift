@@ -58,6 +58,7 @@ actor FixtureTransport: HTTPTransport {
         } else if path.hasSuffix("/profile") {
             preferences = try JSONDecoder().decode(JSONValue.self, from: request.httpBody!); payload = preferences
         } else if path.hasSuffix("/analyze/outfit") {
+            if ProcessInfo.processInfo.arguments.contains("--slow-analysis") { try await Task.sleep(for: .seconds(10)) }
             if ProcessInfo.processInfo.arguments.contains("--retake") { payload = .object(["kind": .string("retake"), "issues": .array([.string("too_dark")]), "instructions": .array([.string("Find even light and try again.")])]) }
             else if ProcessInfo.processInfo.arguments.contains("--invalid-output") { payload = .object(["kind": .string("report"), "report": .string("invalid")]) }
             else if ProcessInfo.processInfo.arguments.contains("--partial"), case .object(var fields) = report {

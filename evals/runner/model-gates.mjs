@@ -1,0 +1,10 @@
+import {readFileSync} from 'node:fs';
+const filename=process.argv[2];if(!filename)throw Error('Usage: node evals/runner/model-gates.mjs BLIND_COMPARISON_JSON');
+const {comparisons,selectedConfiguration}=JSON.parse(readFileSync(filename,'utf8'));
+if(!Array.isArray(comparisons)||!comparisons.length||typeof selectedConfiguration!=='string')throw Error('Supply blind paired comparisons and selectedConfiguration');
+const decided=comparisons.filter(c=>c.preferred==='selected'||c.preferred==='baseline');
+const winRate=decided.length?decided.filter(c=>c.preferred==='selected').length/decided.length:0;
+const selected=comparisons.filter(c=>c.selectedConfiguration===selectedConfiguration);
+const latencies=selected.map(c=>c.latencyMs).sort((a,b)=>a-b);const percentile=p=>latencies[Math.max(0,Math.ceil(p*latencies.length)-1)];
+const gates={pairedBlindReview:comparisons.every(c=>c.blinded===true&&Array.isArray(c.reviewers)&&new Set(c.reviewers).size>=2),selectedWins:winRate>=.6,qualityGates:selected.length>0&&selected.every(c=>c.qualityPassed===true),medianUnder15Seconds:percentile(.5)<15000,p95Under35Seconds:percentile(.95)<35000,meanCostUnderThreeCents:selected.reduce((n,c)=>n+c.costMicrodollars,0)/selected.length<30000};
+console.log(JSON.stringify({passed:Object.values(gates).every(Boolean),winRate,gates},null,2));if(Object.values(gates).some(value=>!value))process.exitCode=1;
